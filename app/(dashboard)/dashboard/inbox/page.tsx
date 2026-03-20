@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 
 import { EmptyInboxState, StateBlock } from "@/components/dashboard/state-block";
@@ -30,6 +31,7 @@ export default function InboxPage() {
   const [activePlatform, setActivePlatform] = useState<Platform | "all">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
 
   const loadMessages = useCallback(async () => {
     setIsLoading(true);
@@ -61,6 +63,7 @@ export default function InboxPage() {
       const nextMessages = payload.data ?? [];
       setMessages(nextMessages);
       setSelectedId((current) => current ?? nextMessages[0]?.id ?? null);
+      setIsMobileDetailOpen(false);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load inbox");
     } finally {
@@ -136,12 +139,20 @@ export default function InboxPage() {
 
   return (
     <main className="flex min-h-[calc(100vh-60px)] flex-col gap-4 p-6 xl:flex-row">
-      <section className="flex w-full flex-col rounded-3xl border border-white/8 bg-[#13131f]/80 xl:w-[380px]">
+      <section
+        className={`w-full flex-col rounded-3xl border border-white/8 bg-[#13131f]/80 xl:flex xl:w-[380px] ${
+          isMobileDetailOpen ? "hidden" : "flex"
+        }`}
+      >
         <div className="border-b border-white/8 px-4 py-4">
           <div className="flex flex-wrap gap-2">
             {FILTERS.map((filter) => (
               <Button
-                className={filter.value === activeFilter ? "bg-primary text-white" : "bg-white/5 text-slate-300 hover:bg-white/10"}
+                className={
+                  filter.value === activeFilter
+                    ? "bg-primary text-white"
+                    : "bg-white/5 text-slate-300 hover:bg-white/10"
+                }
                 key={filter.value}
                 onClick={() => setActiveFilter(filter.value)}
                 size="sm"
@@ -154,7 +165,11 @@ export default function InboxPage() {
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
-              className={activePlatform === "all" ? "bg-primary text-white" : "bg-white/5 text-slate-300 hover:bg-white/10"}
+              className={
+                activePlatform === "all"
+                  ? "bg-primary text-white"
+                  : "bg-white/5 text-slate-300 hover:bg-white/10"
+              }
               onClick={() => setActivePlatform("all")}
               size="sm"
               type="button"
@@ -162,18 +177,24 @@ export default function InboxPage() {
             >
               All Platforms
             </Button>
-            {(["twitter", "instagram", "linkedin", "facebook"] as Platform[]).map((platform) => (
-              <Button
-                className={activePlatform === platform ? "bg-primary text-white" : "bg-white/5 text-slate-300 hover:bg-white/10"}
-                key={platform}
-                onClick={() => setActivePlatform(platform)}
-                size="sm"
-                type="button"
-                variant={activePlatform === platform ? "default" : "ghost"}
-              >
-                {platform}
-              </Button>
-            ))}
+            {(["twitter", "instagram", "linkedin", "facebook"] as Platform[]).map(
+              (platform) => (
+                <Button
+                  className={
+                    activePlatform === platform
+                      ? "bg-primary text-white"
+                      : "bg-white/5 text-slate-300 hover:bg-white/10"
+                  }
+                  key={platform}
+                  onClick={() => setActivePlatform(platform)}
+                  size="sm"
+                  type="button"
+                  variant={activePlatform === platform ? "default" : "ghost"}
+                >
+                  {platform}
+                </Button>
+              ),
+            )}
           </div>
         </div>
 
@@ -190,6 +211,7 @@ export default function InboxPage() {
               key={message.id}
               onClick={() => {
                 setSelectedId(message.id);
+                setIsMobileDetailOpen(true);
                 if (!message.is_read) {
                   void markMessageRead(message.id);
                 }
@@ -198,7 +220,13 @@ export default function InboxPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className={`text-sm ${message.is_read ? "text-slate-300" : "font-semibold text-white"}`}>
+                  <p
+                    className={
+                      message.is_read
+                        ? "text-sm text-slate-300"
+                        : "text-sm font-semibold text-white"
+                    }
+                  >
                     {message.sender_name}
                   </p>
                   <p className="text-xs text-slate-500">{message.sender_handle ?? "@"}</p>
@@ -213,49 +241,85 @@ export default function InboxPage() {
         </div>
       </section>
 
-      <section className="flex-1 rounded-3xl border border-white/8 bg-[#13131f]/80 p-6">
+      <section
+        className={`flex-1 rounded-3xl border border-white/8 bg-[#13131f]/80 p-6 ${
+          isMobileDetailOpen ? "block" : "hidden xl:block"
+        }`}
+      >
         {selectedMessage ? (
           <div className="space-y-6">
             <div className="flex flex-col gap-4 border-b border-white/8 pb-6 md:flex-row md:items-start md:justify-between">
               <div>
-                <h1 className="text-2xl font-semibold text-white">{selectedMessage.sender_name}</h1>
+                <Button
+                  className="mb-4 xl:hidden"
+                  onClick={() => setIsMobileDetailOpen(false)}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to list
+                </Button>
+                <h1 className="text-2xl font-semibold text-white">
+                  {selectedMessage.sender_name}
+                </h1>
                 <p className="mt-2 text-sm text-slate-400">
-                  {selectedMessage.sender_handle ?? "No handle"} ·{" "}
-                  {formatDistanceToNow(parseISO(selectedMessage.received_at), { addSuffix: true })}
+                  {selectedMessage.sender_handle ?? "No handle"} |{" "}
+                  {formatDistanceToNow(parseISO(selectedMessage.received_at), {
+                    addSuffix: true,
+                  })}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <PlatformBadge platform={selectedMessage.platform} />
                   {selectedMessage.sentiment ? (
-                    <Badge className="bg-white/6 text-slate-300">{selectedMessage.sentiment}</Badge>
+                    <Badge className="bg-white/6 text-slate-300">
+                      {selectedMessage.sentiment}
+                    </Badge>
                   ) : null}
-                  <Badge className="bg-white/6 text-slate-300">{selectedMessage.message_type}</Badge>
+                  <Badge className="bg-white/6 text-slate-300">
+                    {selectedMessage.message_type}
+                  </Badge>
                 </div>
               </div>
               <div className="flex gap-2">
                 {!selectedMessage.is_read ? (
-                  <Button onClick={() => void markMessageRead(selectedMessage.id)} type="button" variant="outline">
+                  <Button
+                    onClick={() => void markMessageRead(selectedMessage.id)}
+                    type="button"
+                    variant="outline"
+                  >
                     Mark as Read
                   </Button>
                 ) : null}
-                <Button className="bg-primary text-white hover:bg-indigo-500" onClick={() => void markAllRead()} type="button">
+                <Button
+                  className="bg-primary text-white hover:bg-indigo-500"
+                  onClick={() => void markAllRead()}
+                  type="button"
+                >
                   Mark All Read
                 </Button>
               </div>
             </div>
 
             <div className="rounded-3xl border border-white/8 bg-white/3 p-5">
-              <p className="whitespace-pre-wrap text-sm leading-7 text-slate-300">{selectedMessage.content}</p>
+              <p className="whitespace-pre-wrap text-sm leading-7 text-slate-300">
+                {selectedMessage.content}
+              </p>
             </div>
 
             <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.02] p-5">
               <p className="text-sm font-medium text-white">Reply</p>
               <p className="mt-2 text-sm text-slate-500">
-                Reply actions are UI-only in this phase. Message state and read workflows are already live.
+                Reply actions are UI-only in this phase. Message state and read workflows are
+                already live.
               </p>
             </div>
           </div>
         ) : (
-          <StateBlock description="Pick a conversation from the left to inspect the full message." title="Select a message" />
+          <StateBlock
+            description="Pick a conversation from the left to inspect the full message."
+            title="Select a message"
+          />
         )}
       </section>
     </main>

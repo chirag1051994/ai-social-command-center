@@ -72,7 +72,9 @@ export default function AccountsPage() {
         platform: selectedPlatform,
         account_name: accountName,
         account_handle: accountHandle,
-        followers_count: Number(followersCount),
+        followers_count: Number.isFinite(Number(followersCount))
+          ? Number(followersCount)
+          : 0,
       }),
     });
 

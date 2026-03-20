@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { DemoBanner } from "@/components/layout/demo-banner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import type {
@@ -47,6 +48,9 @@ export default async function DashboardLayout({
     avatarUrl: profileResult.data?.avatar_url ?? null,
     plan: profileResult.data?.plan ?? "starter",
   };
+  const isDemoUser =
+    user.email === "demo@phootsuite.com" ||
+    profileResult.data?.company_name === "Brandify Agency";
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -55,6 +59,7 @@ export default async function DashboardLayout({
       </div>
       <div className="md:pl-[240px]">
         <TopBar navigation={navigation} user={shellUser} />
+        <DemoBanner isDemoUser={isDemoUser} />
         <div className="min-h-[calc(100vh-60px)]">{children}</div>
       </div>
     </div>

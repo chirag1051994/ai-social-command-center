@@ -13,9 +13,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "PhootSuite",
-  description: "AI-powered social media command center.",
+  metadataBase: new URL(appUrl),
+  title: {
+    default: "PhootSuite - AI Social Media Command Center",
+    template: "%s | PhootSuite",
+  },
+  description:
+    "Schedule, analyze, and manage six social platforms with AI-powered workflows built for agencies and SMB teams.",
+  openGraph: {
+    title: "PhootSuite - AI Social Media Command Center",
+    description:
+      "Schedule, analyze, and manage six social platforms with AI-powered workflows built for agencies and SMB teams.",
+    url: appUrl,
+    type: "website",
+  },
 };
 
 export default function RootLayout({

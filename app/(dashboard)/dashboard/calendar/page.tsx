@@ -106,7 +106,7 @@ export default function CalendarPage() {
       <main className="p-6">
         <StateBlock
           actionLabel="Retry"
-          description="The publishing calendar could not load this month’s schedule."
+          description="The publishing calendar could not load this month's schedule."
           onAction={() => void loadPosts()}
           title="Calendar unavailable"
           tone="error"
@@ -132,13 +132,21 @@ export default function CalendarPage() {
     <main className="space-y-6 p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-2">
-          <Button onClick={() => setCurrentMonth((current) => subMonths(current, 1))} type="button" variant="outline">
+          <Button
+            onClick={() => setCurrentMonth((current) => subMonths(current, 1))}
+            type="button"
+            variant="outline"
+          >
             Prev
           </Button>
           <div className="rounded-2xl border border-white/8 bg-[#13131f]/80 px-4 py-2 text-white">
             {format(currentMonth, "MMMM yyyy")}
           </div>
-          <Button onClick={() => setCurrentMonth((current) => addMonths(current, 1))} type="button" variant="outline">
+          <Button
+            onClick={() => setCurrentMonth((current) => addMonths(current, 1))}
+            type="button"
+            variant="outline"
+          >
             Next
           </Button>
           <Button onClick={() => setCurrentMonth(new Date())} type="button" variant="ghost">
@@ -147,13 +155,28 @@ export default function CalendarPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setView("month")} size="sm" type="button" variant={view === "month" ? "default" : "ghost"}>
+          <Button
+            onClick={() => setView("month")}
+            size="sm"
+            type="button"
+            variant={view === "month" ? "default" : "ghost"}
+          >
             Month
           </Button>
-          <Button onClick={() => setView("list")} size="sm" type="button" variant={view === "list" ? "default" : "ghost"}>
+          <Button
+            onClick={() => setView("list")}
+            size="sm"
+            type="button"
+            variant={view === "list" ? "default" : "ghost"}
+          >
             List
           </Button>
-          <Button onClick={() => setPlatformFilter("all")} size="sm" type="button" variant={platformFilter === "all" ? "default" : "ghost"}>
+          <Button
+            onClick={() => setPlatformFilter("all")}
+            size="sm"
+            type="button"
+            variant={platformFilter === "all" ? "default" : "ghost"}
+          >
             All
           </Button>
           {ALL_PLATFORMS.map((platform) => (
@@ -171,65 +194,71 @@ export default function CalendarPage() {
       </div>
 
       {view === "month" ? (
-        <section className="grid grid-cols-7 gap-3">
-          {days.map((day) => {
-            const dayPosts = visiblePosts.filter((post) => {
-              if (!post.scheduled_at) {
-                return false;
-              }
+        <div className="overflow-x-auto">
+          <section className="grid min-w-[900px] grid-cols-7 gap-3">
+            {days.map((day) => {
+              const dayPosts = visiblePosts.filter((post) => {
+                if (!post.scheduled_at) {
+                  return false;
+                }
 
-              const scheduled = parseISO(post.scheduled_at);
-              return format(scheduled, "yyyy-MM-dd") === format(day, "yyyy-MM-dd");
-            });
+                const scheduled = parseISO(post.scheduled_at);
+                return format(scheduled, "yyyy-MM-dd") === format(day, "yyyy-MM-dd");
+              });
 
-            return (
-              <div
-                className={`min-h-[160px] rounded-3xl border p-3 ${
-                  isSameMonth(day, currentMonth)
-                    ? "border-white/8 bg-[#13131f]/80"
-                    : "border-white/6 bg-white/[0.02] opacity-60"
-                } ${isToday(day) ? "ring-1 ring-primary" : ""}`}
-                key={day.toISOString()}
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-medium text-white">{format(day, "d")}</span>
-                  {dayPosts.length > 0 ? (
-                    <span className="rounded-full bg-white/6 px-2 py-0.5 text-[10px] text-slate-400">
-                      {dayPosts.length}
-                    </span>
-                  ) : null}
+              return (
+                <div
+                  className={`min-h-[160px] rounded-3xl border p-3 ${
+                    isSameMonth(day, currentMonth)
+                      ? "border-white/8 bg-[#13131f]/80"
+                      : "border-white/6 bg-white/[0.02] opacity-60"
+                  } ${isToday(day) ? "ring-1 ring-primary" : ""}`}
+                  key={day.toISOString()}
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-sm font-medium text-white">{format(day, "d")}</span>
+                    {dayPosts.length > 0 ? (
+                      <span className="rounded-full bg-white/6 px-2 py-0.5 text-[10px] text-slate-400">
+                        {dayPosts.length}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    {dayPosts.slice(0, 3).map((post) => (
+                      <Popover key={post.id}>
+                        <PopoverTrigger
+                          className="w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-white"
+                          style={{
+                            backgroundColor: `${PLATFORM_COLORS[post.platforms[0] ?? "twitter"]}22`,
+                          }}
+                        >
+                          {post.content.length > 40
+                            ? `${post.content.slice(0, 40)}...`
+                            : post.content}
+                        </PopoverTrigger>
+                        <PopoverContent className="border border-white/8 bg-[#13131f] text-white">
+                          <PopoverHeader>
+                            <PopoverTitle>Scheduled Post</PopoverTitle>
+                            <PopoverDescription>
+                              {post.scheduled_at
+                                ? format(parseISO(post.scheduled_at), "PPP p")
+                                : "No schedule"}
+                            </PopoverDescription>
+                          </PopoverHeader>
+                          <p className="text-sm leading-6 text-slate-300">{post.content}</p>
+                        </PopoverContent>
+                      </Popover>
+                    ))}
+                    {dayPosts.length > 3 ? (
+                      <p className="text-xs text-slate-500">+{dayPosts.length - 3} more</p>
+                    ) : null}
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  {dayPosts.slice(0, 3).map((post) => (
-                    <Popover key={post.id}>
-                      <PopoverTrigger
-                        className="w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-white"
-                        style={{
-                          backgroundColor: `${PLATFORM_COLORS[post.platforms[0] ?? "twitter"]}22`,
-                        }}
-                      >
-                        {post.content.length > 40 ? `${post.content.slice(0, 40)}...` : post.content}
-                      </PopoverTrigger>
-                      <PopoverContent className="border border-white/8 bg-[#13131f] text-white">
-                        <PopoverHeader>
-                          <PopoverTitle>Scheduled Post</PopoverTitle>
-                          <PopoverDescription>
-                            {post.scheduled_at ? format(parseISO(post.scheduled_at), "PPP p") : "No schedule"}
-                          </PopoverDescription>
-                        </PopoverHeader>
-                        <p className="text-sm leading-6 text-slate-300">{post.content}</p>
-                      </PopoverContent>
-                    </Popover>
-                  ))}
-                  {dayPosts.length > 3 ? (
-                    <p className="text-xs text-slate-500">+{dayPosts.length - 3} more</p>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-        </section>
+              );
+            })}
+          </section>
+        </div>
       ) : (
         <section className="space-y-3">
           {visiblePosts
@@ -252,7 +281,9 @@ export default function CalendarPage() {
                     <p className="mt-3 text-sm text-slate-300">{post.content}</p>
                   </div>
                   <div className="text-sm text-slate-500">
-                    {post.scheduled_at ? format(parseISO(post.scheduled_at), "PPP p") : "No schedule"}
+                    {post.scheduled_at
+                      ? format(parseISO(post.scheduled_at), "PPP p")
+                      : "No schedule"}
                   </div>
                 </div>
               </div>
