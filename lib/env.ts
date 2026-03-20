@@ -23,3 +23,7 @@ export function getSupabaseAnonKey(): string {
 
   return readRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
+
+export function getAnthropicApiKey(): string {
+  return readRequiredEnv("ANTHROPIC_API_KEY");
+}
