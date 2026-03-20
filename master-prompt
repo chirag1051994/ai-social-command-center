@@ -1,0 +1,671 @@
+You are building "PhootSuite" — a production-ready AI-powered social media management SaaS (Hootsuite alternative) for the AI Mahakurukshetra 2026 hackathon.
+
+Git repo: https://github.com/chirag1051994/ai-social-command-center
+Clone it, initialize the project inside it, and push after every major phase.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ROLE: You are acting as 3 agents simultaneously:
+1. BACKEND AGENT  — owns all data, schema, services, API routes
+2. FRONTEND AGENT — owns all UI, pages, components
+3. ORCHESTRATOR   — enforces rules, reviews each phase before proceeding
+
+DOMAIN EXPERT LENS (apply at every decision):
+- Target users: social media agencies and SMBs managing 6 platforms
+- They care about: scheduling efficiency, engagement metrics, inbox management
+- They will abandon the tool if: data is empty, flows are confusing, analytics are meaningless
+- Business scenario: A 3-person agency managing 5 brand accounts must be able to use this daily
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NON-NEGOTIABLE RULES (violating any = restart that phase):
+✗ NEVER use hardcoded/static data arrays in components or API routes
+✗ NEVER add database integration "later" — Supabase is wired from Phase 0
+✗ NEVER let frontend query Supabase directly — only via /api/* routes
+✗ NEVER start a new phase until the current phase passes self-review
+✗ NEVER use 'any' TypeScript type — define proper interfaces
+✗ NEVER skip RLS policies on any Supabase table
+✗ NEVER put API keys in client-side code
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TECH STACK (mandatory, no substitutions):
+- Next.js 15 with App Router + TypeScript
+- Tailwind CSS v4
+- Supabase (@supabase/ssr + @supabase/supabase-js)
+- shadcn/ui (default style, zinc base)
+- recharts (analytics charts)
+- lucide-react (icons)
+- date-fns (date formatting)
+- @anthropic-ai/sdk (AI features)
+- sonner (toast notifications)
+- tsx (for seed script)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DESIGN SYSTEM (enforce everywhere):
+Colors:
+  --bg-base: #0a0a0f
+  --bg-surface: #13131f
+  --bg-elevated: #1a1a2e
+  --border: rgba(255,255,255,0.08)
+  --primary: #6366f1
+  --primary-hover: #4f46e5
+  --accent: #f59e0b
+  --success: #10b981
+  --danger: #ef4444
+  --text: #e2e8f0
+  --muted: #64748b
+
+Platform brand colors:
+  twitter: #1a8cd8
+  instagram: #e1306c
+  linkedin: #0a66c2
+  facebook: #1877f2
+  tiktok: #ff0050
+  pinterest: #e60023
+
+Font: Geist (Next.js default)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BUILD ORDER — 9 PHASES (strict sequence):
+
+═══════════════════════════════════════════════════
+PHASE 0: PROJECT BOOTSTRAP + SCHEMA
+═══════════════════════════════════════════════════
+
+STEP 0.1 — Initialize Next.js project:
+npx create-next-app@latest . --typescript --tailwind --app --src-dir=false --import-alias="@/*"
+
+STEP 0.2 — Install all dependencies:
+npm install @supabase/ssr @supabase/supabase-js @anthropic-ai/sdk recharts lucide-react date-fns sonner tsx
+npx shadcn@latest init -d
+npx shadcn@latest add button card input label textarea select badge skeleton toast dialog popover
+
+STEP 0.3 — Create .env.local with placeholders (FILL BEFORE RUNNING):
+NEXT_PUBLIC_SUPABASE_URL=REPLACE_WITH_YOUR_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=REPLACE_WITH_YOUR_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=REPLACE_WITH_YOUR_SERVICE_ROLE_KEY
+ANTHROPIC_API_KEY=REPLACE_WITH_YOUR_ANTHROPIC_KEY
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+Also create .env.example (same keys, no values)
+
+STEP 0.4 — Create ALL TypeScript types first in lib/types/index.ts:
+
+export type Platform = 'twitter' | 'instagram' | 'linkedin' | 'facebook' | 'tiktok' | 'pinterest'
+export type PostStatus = 'draft' | 'scheduled' | 'published' | 'failed'
+export type MessageType = 'dm' | 'mention' | 'comment' | 'reply'
+export type Sentiment = 'positive' | 'neutral' | 'negative'
+export type Plan = 'starter' | 'pro' | 'enterprise'
+export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed'
+export type Tone = 'professional' | 'casual' | 'humorous' | 'inspirational' | 'promotional'
+
+export interface Profile {
+  id: string; full_name: string | null; avatar_url: string | null
+  company_name: string | null; plan: Plan; timezone: string
+  created_at: string; updated_at: string
+}
+export interface SocialAccount {
+  id: string; user_id: string; platform: Platform
+  account_name: string; account_handle: string; avatar_url: string | null
+  followers_count: number; is_connected: boolean; created_at: string
+}
+export interface Campaign {
+  id: string; user_id: string; name: string; description: string | null
+  color: string; start_date: string | null; end_date: string | null
+  status: CampaignStatus; created_at: string
+}
+export interface Post {
+  id: string; user_id: string; campaign_id: string | null; content: string
+  media_urls: string[]; platforms: Platform[]; hashtags: string[]
+  status: PostStatus; scheduled_at: string | null; published_at: string | null
+  ai_generated: boolean; created_at: string; updated_at: string
+}
+export interface PostAnalytics {
+  id: string; post_id: string; platform: Platform; impressions: number
+  reach: number; likes: number; comments: number; shares: number
+  clicks: number; engagement_rate: number; recorded_at: string
+}
+export interface AccountAnalytics {
+  id: string; social_account_id: string; date: string; followers: number
+  following: number; impressions: number; reach: number
+  profile_visits: number; new_followers: number
+}
+export interface InboxMessage {
+  id: string; user_id: string; social_account_id: string | null
+  platform: Platform; message_type: MessageType; sender_name: string
+  sender_handle: string | null; sender_avatar: string | null; content: string
+  is_read: boolean; is_replied: boolean; sentiment: Sentiment | null
+  received_at: string
+}
+export interface ApiResponse<T> { data: T | null; error: string | null }
+export interface DashboardStats {
+  totalPosts: number; scheduledPosts: number; publishedPosts: number
+  totalReach: number; unreadMessages: number; connectedAccounts: number
+}
+export interface AnalyticsSummary {
+  totalImpressions: number; totalReach: number; totalEngagements: number
+  avgEngagementRate: number
+  platformBreakdown: { platform: Platform; count: number; percentage: number }[]
+  dailyImpressions: { date: string; impressions: number; reach: number }[]
+  topPosts: (Post & { analytics: PostAnalytics[] })[]
+}
+
+STEP 0.5 — Create supabase/schema.sql:
+[Full SQL with these tables: profiles, social_accounts, campaigns, posts, post_analytics, account_analytics, inbox_messages]
+Requirements:
+- uuid_generate_v4() for all PKs
+- FK with ON DELETE CASCADE
+- CHECK constraints matching TypeScript types exactly
+- RLS ENABLED on all 7 tables
+- User-scoped policies (auth.uid() = user_id)
+- auto-create profile trigger on auth.users insert
+- Indexes: (user_id, status) on posts, (scheduled_at) on posts, (social_account_id, date) on account_analytics
+- UNIQUE(social_account_id, date) on account_analytics
+
+STEP 0.6 — Supabase clients:
+lib/supabase/client.ts — createBrowserClient
+lib/supabase/server.ts — createServerClient using cookies()
+middleware.ts — updateSession + protect /dashboard/* (redirect /login if no session)
+
+ORCHESTRATOR GATE 0 CHECK before Phase 1:
+□ npm run build passes (with placeholder env vars, just check types)
+□ All 7 TypeScript interfaces defined
+□ Schema SQL has RLS on all tables
+□ middleware.ts protects /dashboard/*
+□ No hardcoded data exists anywhere
+
+═══════════════════════════════════════════════════
+PHASE 1: SERVICE LAYER (Backend Agent)
+═══════════════════════════════════════════════════
+
+Create lib/services/ — one file per domain.
+ALL functions use createServerClient (lib/supabase/server.ts).
+ALL return ApiResponse<T>.
+NEVER throw — always catch and return { data: null, error: message }.
+
+lib/services/profile.service.ts:
+  getProfile(userId: string): Promise<ApiResponse<Profile>>
+  upsertProfile(userId: string, data: Partial<Profile>): Promise<ApiResponse<Profile>>
+
+lib/services/social-accounts.service.ts:
+  getSocialAccounts(userId: string): Promise<ApiResponse<SocialAccount[]>>
+  createSocialAccount(userId: string, data: Omit<SocialAccount,'id'|'user_id'|'created_at'>): Promise<ApiResponse<SocialAccount>>
+  updateSocialAccount(id: string, userId: string, data: Partial<SocialAccount>): Promise<ApiResponse<SocialAccount>>
+  deleteSocialAccount(id: string, userId: string): Promise<ApiResponse<null>>
+
+lib/services/posts.service.ts:
+  getPosts(userId: string, filters?: {status?: PostStatus; limit?: number; offset?: number}): Promise<ApiResponse<Post[]>>
+  getPostById(id: string, userId: string): Promise<ApiResponse<Post>>
+  createPost(userId: string, data: Omit<Post,'id'|'user_id'|'created_at'|'updated_at'>): Promise<ApiResponse<Post>>
+  updatePost(id: string, userId: string, data: Partial<Post>): Promise<ApiResponse<Post>>
+  deletePost(id: string, userId: string): Promise<ApiResponse<null>>
+  getPostsByDateRange(userId: string, start: string, end: string): Promise<ApiResponse<Post[]>>
+
+lib/services/analytics.service.ts:
+  getDashboardStats(userId: string): Promise<ApiResponse<DashboardStats>>
+  getAnalyticsSummary(userId: string, days: 7|30|90): Promise<ApiResponse<AnalyticsSummary>>
+  getPostWithAnalytics(postId: string, userId: string): Promise<ApiResponse<Post & {analytics: PostAnalytics[]}>>
+
+lib/services/inbox.service.ts:
+  getMessages(userId: string, filters?: {type?: MessageType; platform?: Platform; isRead?: boolean}): Promise<ApiResponse<InboxMessage[]>>
+  markMessageRead(id: string, userId: string): Promise<ApiResponse<InboxMessage>>
+  markAllRead(userId: string): Promise<ApiResponse<null>>
+  getUnreadCount(userId: string): Promise<ApiResponse<number>>
+
+lib/services/campaigns.service.ts:
+  getCampaigns(userId: string): Promise<ApiResponse<Campaign[]>>
+  createCampaign(userId: string, data: Omit<Campaign,'id'|'user_id'|'created_at'>): Promise<ApiResponse<Campaign>>
+  deleteCampaign(id: string, userId: string): Promise<ApiResponse<null>>
+
+ORCHESTRATOR GATE 1 CHECK:
+□ Every service function returns ApiResponse<T>
+□ Every function has try/catch
+□ Zero Supabase calls outside lib/services/
+□ No hardcoded fallback data
+
+═══════════════════════════════════════════════════
+PHASE 2: API ROUTES (Backend Agent)
+═══════════════════════════════════════════════════
+
+ALL routes:
+1. Get user via createServerClient → if no user return 401 { error: 'Unauthorized', data: null }
+2. Call service function
+3. Return NextResponse.json(result, { status: N })
+4. HTTP codes: 200 GET success, 201 POST success, 400 validation, 401 unauth, 404 not found, 500 server error
+
+Create these route files:
+
+app/api/dashboard/stats/route.ts → GET → getDashboardStats(userId)
+
+app/api/posts/route.ts
+  GET (query: status?, limit?, offset?) → getPosts(userId, filters)
+  POST (body: {content,platforms,hashtags,status,scheduled_at,campaign_id?,ai_generated}) → createPost
+
+app/api/posts/calendar/route.ts
+  GET (query: start, end) → getPostsByDateRange(userId, start, end)
+
+app/api/posts/[id]/route.ts
+  GET → getPostById
+  PATCH (body: Partial<Post>) → updatePost
+  DELETE → deletePost
+
+app/api/social-accounts/route.ts
+  GET → getSocialAccounts
+  POST (body: {platform,account_name,account_handle,followers_count}) → createSocialAccount
+
+app/api/social-accounts/[id]/route.ts
+  PATCH → updateSocialAccount
+  DELETE → deleteSocialAccount
+
+app/api/analytics/summary/route.ts
+  GET (query: days=7|30|90) → getAnalyticsSummary
+
+app/api/inbox/route.ts
+  GET (query: type?, platform?, is_read?) → getMessages
+  PATCH (body: {markAll: true}) → markAllRead
+
+app/api/inbox/[id]/route.ts
+  PATCH → markMessageRead
+
+app/api/campaigns/route.ts
+  GET → getCampaigns
+  POST → createCampaign
+
+app/api/campaigns/[id]/route.ts
+  DELETE → deleteCampaign
+
+app/api/ai/caption/route.ts
+  POST (body: {topic: string, platform: Platform, tone: Tone})
+  → call Anthropic claude-sonnet-4-20250514
+  → system: "You are an expert social media copywriter. Generate 3 distinct engaging captions for {platform} about: {topic}. Tone: {tone}. Max chars: twitter=280, instagram=2200, linkedin=3000, tiktok=2200, facebook=2000, pinterest=500. Start each caption differently. Include relevant emojis. Return ONLY valid JSON with no markdown: {\"captions\":[\"caption1\",\"caption2\",\"caption3\"]}"
+  → max_tokens: 600
+  → parse response, return { data: {captions: string[]}, error: null }
+
+app/api/ai/hashtags/route.ts
+  POST (body: {content: string, platform: Platform})
+  → system: "Generate 12 hashtags for {platform}. Post: {content}. Mix: 4 broad, 4 niche, 4 specific. Return ONLY JSON: {\"hashtags\":[\"#tag1\",...]}"
+  → max_tokens: 200
+  → return { data: {hashtags: string[]}, error: null }
+
+ORCHESTRATOR GATE 2 CHECK:
+□ Every route has auth check first
+□ No route queries Supabase directly (all via services)
+□ All routes return consistent { data, error } shape
+□ AI routes handle Anthropic errors gracefully
+□ npm run build still passes
+
+═══════════════════════════════════════════════════
+PHASE 3: AUTH PAGES (Frontend Agent starts here)
+═══════════════════════════════════════════════════
+
+app/(auth)/layout.tsx — center content, dark background, no sidebar
+
+app/(auth)/login/page.tsx:
+- Full page centered card (max-w-md)
+- PhootSuite logo: gradient text indigo→violet, "📡 PhootSuite" + tagline "Your social media, commanded."
+- Email input + Password input (with show/hide toggle)
+- "Sign In" button: full width, indigo gradient, loading spinner on submit
+- "Forgot password?" link (static)
+- Divider "or"
+- Google button: gray outline, Google SVG icon
+- "No account? Sign up →" link
+- On submit: supabase.auth.signInWithPassword → router.push('/dashboard') on success → sonner toast on error
+- Client component, no hardcoded credentials
+
+app/(auth)/signup/page.tsx:
+- Same card design
+- Fields: Full Name, Company (optional), Email, Password, Confirm Password
+- Password strength bar (calculate from length + special chars + numbers)
+- Submit: supabase.auth.signUp with metadata {full_name, company_name} → router.push('/dashboard')
+- "Already have account? Sign in →"
+
+app/auth/callback/route.ts:
+- Handle OAuth code exchange
+- Redirect to /dashboard on success
+
+ORCHESTRATOR GATE 3 CHECK:
+□ Login/signup work with real Supabase (no mock auth)
+□ Session persists on page refresh
+□ /dashboard redirects to /login if not authenticated
+□ No credentials hardcoded anywhere
+
+═══════════════════════════════════════════════════
+PHASE 4: DASHBOARD LAYOUT
+═══════════════════════════════════════════════════
+
+app/(dashboard)/layout.tsx — server component:
+- createServerClient → get user → if null redirect('/login')
+- Render: <Sidebar> + <TopBar> + {children}
+- Pass user to client components via props
+
+components/layout/Sidebar.tsx — client component:
+- Width: 240px fixed, height: 100vh, bg: #0d0d1a, border-right: var(--border)
+- Logo area: gradient icon + "PhootSuite" text
+- Nav links (usePathname for active state):
+  LayoutDashboard → /dashboard
+  PenSquare → /dashboard/compose  
+  CalendarDays → /dashboard/calendar
+  BarChart3 → /dashboard/analytics
+  MessageSquare → /dashboard/inbox (show UnreadBadge)
+  Share2 → /dashboard/accounts
+- Active: left border 3px indigo + bg indigo/10 + text indigo
+- Bottom: avatar (initials fallback) + full_name + plan badge + logout button
+- Logout: supabase.auth.signOut() → router.push('/login')
+
+components/layout/TopBar.tsx — client component:
+- Height: 60px, sticky top, bg blur backdrop, border-bottom
+- Dynamic page title (from pathname)
+- Bell icon (static)
+- "+ New Post" button → router.push('/dashboard/compose')
+
+components/layout/UnreadBadge.tsx — client component:
+- Fetches GET /api/inbox?is_read=false on mount
+- Shows count badge on inbox nav item
+- Refreshes every 60 seconds via setInterval
+
+ORCHESTRATOR GATE 4 CHECK:
+□ Layout renders without errors
+□ Navigation highlighting works on all routes
+□ Unread count fetches from real API
+□ Mobile: sidebar collapses to hamburger drawer (use Sheet from shadcn)
+
+═══════════════════════════════════════════════════
+PHASE 5: ALL FEATURE PAGES
+═══════════════════════════════════════════════════
+
+── PAGE 1: DASHBOARD HOME (app/(dashboard)/page.tsx) ──
+Data (all via fetch, server component):
+  const stats = await fetch('/api/dashboard/stats') → DashboardStats
+  const scheduled = await fetch('/api/posts?status=scheduled&limit=5') → Post[]
+  const published = await fetch('/api/posts?status=published&limit=5') → Post[]
+
+Layout:
+  Row 1 — 4 stat cards (totalPosts, scheduledPosts, publishedPosts, totalReach)
+    Each card: icon (colored) + label + big number + trend chip
+  Row 2 — "Recent Scheduled Posts" table (5 rows)
+    Cols: Content (60 chars truncated) | Platforms (colored icon badges) | Status badge | Scheduled time (date-fns formatDistanceToNow)
+  Row 3 — 3 Quick Action cards with icons and arrows
+
+Empty state: if connectedAccounts === 0, show "Get started" banner with link to /dashboard/accounts
+Loading: Skeleton components matching each section shape
+
+── PAGE 2: POST COMPOSER (app/(dashboard)/compose/page.tsx) ──
+"use client" — all state local
+
+Left panel — Composer (60% width):
+  1. Platform Selector: 6 toggle buttons in grid, each showing platform icon + name
+     Platform icon colors from design system. Multi-select. Min 1 required.
+  2. Textarea: auto-resize, character counter (red if over limit per platform)
+     Platform limits: {twitter:280, instagram:2200, linkedin:3000, facebook:63206, tiktok:2200, pinterest:500}
+  3. AI Caption Section:
+     - Topic text input + Tone select (5 options)
+     - "✨ Generate Captions" → POST /api/ai/caption → shows 3 clickable variant cards
+     - Click variant → fills textarea
+     - Loading state with spinner
+  4. AI Hashtag Section:
+     - "Suggest Hashtags" button → POST /api/ai/hashtags using current textarea content
+     - Shows hashtags as chips → click to add to hashtag list
+  5. Hashtag Input: type + Enter to add → display as removable chips below
+  6. Schedule Section:
+     - "Publish Now" toggle
+     - If off: date picker + time picker
+  7. Action buttons: "Save Draft" | "Schedule Post"
+     Both POST /api/posts → sonner success toast → router.push('/dashboard/calendar')
+
+Right panel — Live Preview (40% width):
+  Platform tab selector (only selected platforms)
+  Mock post preview per platform (styled to look like that platform's UI)
+  Updates live as textarea changes
+  Character limit warning banner if over limit
+
+── PAGE 3: CONTENT CALENDAR (app/(dashboard)/calendar/page.tsx) ──
+"use client" — tracks currentMonth state
+
+Fetch: GET /api/posts/calendar?start={monthStart}&end={monthEnd}
+Refetch when month changes.
+
+Controls: Prev | Month Year | Next | "Today" button | "Month/List" toggle | Platform filter buttons
+
+MONTH VIEW:
+  7-column grid. Day cells. Posts as colored chips (platform color).
+  Max 3 chips visible, "+N more" link. Click chip → Popover with full content + actions.
+  Today: indigo ring. Past days: 60% opacity.
+
+LIST VIEW:
+  Posts sorted by scheduled_at. Grouped by date header.
+  Each row: platform icons | content | status badge | time | edit icon | delete icon (with confirm dialog)
+
+── PAGE 4: ANALYTICS (app/(dashboard)/analytics/page.tsx) ──
+"use client" — tracks days state (default 30)
+
+Fetch: GET /api/analytics/summary?days={days} on mount + when days changes
+
+Controls: "7D | 30D | 90D" toggle buttons
+
+Row 1 — 4 KPI cards: Impressions | Reach | Engagements | Avg Engagement Rate
+  Each: large number + trend badge (vs previous same period)
+
+Row 2 — Impressions Over Time (recharts LineChart, ResponsiveContainer):
+  X: date | Y: impressions
+  One line per platform, platform brand colors
+  Smooth curves (type="monotone"), no dots, custom dark tooltip
+
+Row 3 — Two charts side by side:
+  Left: Platform Breakdown (recharts PieChart donut)
+    Platform brand colors, percentage labels, legend below
+  Right: Top Posts bar chart (recharts BarChart)
+    Top 5 posts by engagement rate, X = truncated content, Y = engagement %
+
+Row 4 — Posts performance table:
+  Content | Platforms | Impressions | Reach | Eng Rate | Published At
+  Sorted by engagement_rate DESC. Show 10, "Load more" button.
+
+All charts: dark bg (#1a1a2e), white text, responsive.
+
+── PAGE 5: UNIFIED INBOX (app/(dashboard)/inbox/page.tsx) ──
+"use client"
+
+Fetch on mount: GET /api/inbox → InboxMessage[]
+On message read: PATCH /api/inbox/{id}
+On "Mark All Read": PATCH /api/inbox
+
+Layout: flex row, full height
+
+LEFT PANEL (380px, border-right):
+  Filter tabs: All | Unread | Mentions | DMs | Comments
+  Platform row: All + 6 platform icon buttons
+  Message list (scrollable):
+    Each item: platform icon (colored) | sender avatar (initials fallback) | sender name + handle | content preview | time ago | sentiment dot
+    Unread: left border indigo + bold name
+    Selected: bg indigo/10
+
+RIGHT PANEL (flex-1):
+  If nothing selected: centered empty state (icon + "Select a message")
+  If selected:
+    Header: avatar + name + handle + platform badge + sentiment badge
+    Full content (large, readable)
+    Timestamp formatted
+    "Mark as Read" button (if unread) → calls PATCH → updates local state
+    "Reply" button → opens textarea below (UI only)
+  
+  On message click: set selected + call PATCH /api/inbox/{id} immediately
+
+── PAGE 6: SOCIAL ACCOUNTS (app/(dashboard)/accounts/page.tsx) ──
+"use client"
+
+Fetch: GET /api/social-accounts → SocialAccount[]
+
+Header: "Social Accounts" + "{n} connected" + "+ Connect Account" button
+
+Grid (2 cols desktop, 1 mobile):
+  Each card:
+    Header: platform icon + name, tinted with platform color at 15% opacity
+    Account name (large, bold)
+    @handle (muted)
+    Followers: formatted (24300 → "24.3K")
+    Status: green "Connected" | gray "Disconnected" badge
+    "Disconnect" button → confirm Dialog → DELETE /api/social-accounts/{id} → refresh list
+
+CONNECT MODAL (shadcn Dialog):
+  Step 1: grid of 6 platform cards
+  Step 2 (after platform select): form with Account Name + Handle + Followers Count inputs
+  "Connect" → POST /api/social-accounts → close modal + refresh + toast
+  Include note: "OAuth integration coming — for now, add your account details manually"
+
+ORCHESTRATOR GATE 5 CHECK (all pages):
+□ Every page fetches from /api/* routes only
+□ Every page has loading skeleton
+□ Every page has empty state
+□ Every page has error state with retry
+□ AI features work (caption + hashtags)
+□ Mobile layout works (check sidebar collapse, stacked layouts)
+
+═══════════════════════════════════════════════════
+PHASE 6: SEED DATA
+═══════════════════════════════════════════════════
+
+Create scripts/seed.ts:
+
+Use SUPABASE_SERVICE_ROLE_KEY to bypass RLS.
+Use Supabase Admin API to create demo user if not exists.
+Demo: email=demo@phootsuite.com, password=Demo@1234
+
+Insert in this order (respect FK constraints):
+1. Profile update: full_name="Alex Johnson", company_name="Brandify Agency", plan="pro"
+2. Social accounts (6 platforms):
+   twitter: "@brandifyagency", 24300 followers
+   instagram: "@brandify.agency", 18750 followers
+   linkedin: "brandify-agency", 8920 followers
+   facebook: "BrandifyAgency", 12400 followers
+   tiktok: "@brandifyagency", 31200 followers
+   pinterest: "brandifyagency", 5600 followers
+3. Campaigns (3):
+   "Q1 Product Launch" (active, indigo), "Brand Awareness March" (active, amber), "Easter Sale 2026" (draft, green)
+4. Posts (10 total):
+   5 published (past 5 days, real social media content, mix of platforms)
+   3 scheduled (next 3 days, AI-sounding content with ai_generated=true for 2)
+   2 draft
+5. Post analytics for each published post × each of its platforms:
+   impressions: 2000-15000, reach: 1500-10000, likes: 50-800
+   engagement_rate: 1.5-8.0 (2 decimal places)
+6. Account analytics: 30 rows per account (last 30 days)
+   followers growing by ~15-20/day, impressions 1000-5000/day
+7. Inbox messages (8 total):
+   Mix: 3 mentions, 2 DMs, 2 comments, 1 reply
+   Mix: 5 positive, 2 neutral, 1 negative sentiment
+   Mix: across twitter, instagram, linkedin, facebook
+   4 unread, 4 read
+
+All content must be realistic social media agency content (not "Sample post 1").
+
+Add to package.json scripts: "seed": "npx tsx scripts/seed.ts"
+
+Print on completion:
+"✅ Seed complete!"
+"  → 6 social accounts"
+"  → 3 campaigns"
+"  → 10 posts (5 published, 3 scheduled, 2 draft)"
+"  → post analytics records"
+"  → 180 account analytics rows"
+"  → 8 inbox messages"
+"  Demo login: demo@phootsuite.com / Demo@1234"
+
+═══════════════════════════════════════════════════
+PHASE 7: POLISH
+═══════════════════════════════════════════════════
+
+1. app/layout.tsx — add metadata:
+   title: "PhootSuite — AI Social Media Command Center"
+   description: "Schedule, analyze, and manage 6 social platforms with AI. The smarter Hootsuite alternative."
+   Add <Toaster /> from sonner
+
+2. Demo banner in dashboard layout:
+   Check if profile.company_name exists (seed user has "Brandify Agency")
+   Show dismissible top banner: "👋 You're in demo mode — explore freely. Sign up to connect your real accounts →"
+   Store dismiss in sessionStorage
+
+3. app/not-found.tsx — nice 404 with "Go to Dashboard" link
+
+4. Mobile audit:
+   - Sidebar must be a Sheet drawer on screens < 768px
+   - All tables: horizontal scroll on mobile
+   - Composer: single column stacked
+   - Inbox: show list on mobile, push to detail on tap (use router or state)
+
+5. Security audit:
+   - Trim all user inputs before DB insert (add to service layer)
+   - Validate content max length server-side (post content max 3000 chars)
+   - Ensure all /api routes return 401 before accessing data
+
+6. Add vercel.json:
+   {"buildCommand": "npm run build", "framework": "nextjs", "regions": ["bom1"]}
+
+═══════════════════════════════════════════════════
+PHASE 8: DEPLOY PREP
+═══════════════════════════════════════════════════
+
+STEP 8.1 — TypeScript check:
+npx tsc --noEmit
+Fix ALL errors. No 'any'. No unused imports.
+
+STEP 8.2 — Lint:
+npm run lint
+Fix all errors.
+
+STEP 8.3 — Build:
+npm run build
+Must pass with 0 errors.
+
+STEP 8.4 — Create final README.md for the repo:
+# PhootSuite — AI Social Media Command Center
+> Hootsuite alternative built with Next.js 15 + Supabase + Claude AI
+
+## Live Demo
+🌐 [phootsuite.vercel.app](https://phootsuite.vercel.app)
+Demo: demo@phootsuite.com / Demo@1234
+
+## Stack
+Next.js 15 · Supabase · Claude AI · Vercel · Tailwind · shadcn/ui
+
+## Setup
+1. Clone + npm install
+2. Create Supabase project, run supabase/schema.sql
+3. Copy .env.example → .env.local, fill values
+4. npm run seed
+5. npm run dev
+
+## Alternative to
+Hootsuite | Buffer | Sprout Social
+
+STEP 8.5 — Git push:
+git add .
+git commit -m "feat: complete PhootSuite - AI social media command center"
+git push origin main
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINAL ORCHESTRATOR CHECK:
+□ npm run build → PASS
+□ All 6 pages functional with real data
+□ Auth works (login, signup, logout, session)
+□ AI features work (captions + hashtags)
+□ Seed data makes app look alive
+□ Mobile responsive
+□ No console errors on main flows
+□ Git pushed to https://github.com/chirag1051994/ai-social-command-center
+□ Ready for Vercel deployment
+
+VERCEL DEPLOY STEPS (do AFTER build passes):
+1. vercel.com → New Project → Import from GitHub
+2. Repo: chirag1051994/ai-social-command-center
+3. Add env vars:
+   NEXT_PUBLIC_SUPABASE_URL
+   NEXT_PUBLIC_SUPABASE_ANON_KEY
+   SUPABASE_SERVICE_ROLE_KEY
+   ANTHROPIC_API_KEY
+   NEXT_PUBLIC_APP_URL=https://your-deployment.vercel.app
+4. Deploy
+5. Run seed against production Supabase (already done if same project)
+6. Visit live URL → login as demo@phootsuite.com → verify all pages load
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Now begin. Start with Phase 0, Step 0.1. 
+Report your progress at each phase gate before proceeding.
+Do NOT skip phases. Do NOT use static data. Do NOT start frontend before backend is complete.
