@@ -1,11 +1,17 @@
-import type { LucideIcon } from "lucide-react";
-
 import type { Plan } from "@/lib/types";
+
+export type NavigationIcon =
+  | "dashboard"
+  | "compose"
+  | "calendar"
+  | "analytics"
+  | "inbox"
+  | "accounts";
 
 export interface NavigationItem {
   title: string;
   href: string;
-  icon: LucideIcon;
+  icon: NavigationIcon;
 }
 
 export interface DashboardShellUser {

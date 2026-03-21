@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import {
+  BarChart3,
+  CalendarDays,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  PenSquare,
+  Share2,
+} from "lucide-react";
 import { useTransition } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +26,15 @@ import {
   type NavigationItem,
 } from "@/components/layout/shell";
 import { UnreadBadge } from "@/components/layout/unread-badge";
+
+const NAVIGATION_ICONS = {
+  dashboard: LayoutDashboard,
+  compose: PenSquare,
+  calendar: CalendarDays,
+  analytics: BarChart3,
+  inbox: MessageSquare,
+  accounts: Share2,
+};
 
 interface SidebarProps {
   navigation: NavigationItem[];
@@ -69,7 +86,7 @@ export function Sidebar({ navigation, user, onNavigate }: SidebarProps) {
         {navigation.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const Icon = item.icon;
+          const Icon = NAVIGATION_ICONS[item.icon];
 
           return (
             <Link

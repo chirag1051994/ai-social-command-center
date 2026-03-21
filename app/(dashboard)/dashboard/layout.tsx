@@ -1,10 +1,4 @@
 import {
-  BarChart3,
-  CalendarDays,
-  LayoutDashboard,
-  MessageSquare,
-  PenSquare,
-  Share2,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 
@@ -19,12 +13,12 @@ import { getProfile } from "@/lib/services/profile.service";
 import { createClient } from "@/lib/supabase/server";
 
 const navigation: NavigationItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Compose", href: "/dashboard/compose", icon: PenSquare },
-  { title: "Calendar", href: "/dashboard/calendar", icon: CalendarDays },
-  { title: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { title: "Inbox", href: "/dashboard/inbox", icon: MessageSquare },
-  { title: "Accounts", href: "/dashboard/accounts", icon: Share2 },
+  { title: "Dashboard", href: "/dashboard", icon: "dashboard" },
+  { title: "Compose", href: "/dashboard/compose", icon: "compose" },
+  { title: "Calendar", href: "/dashboard/calendar", icon: "calendar" },
+  { title: "Analytics", href: "/dashboard/analytics", icon: "analytics" },
+  { title: "Inbox", href: "/dashboard/inbox", icon: "inbox" },
+  { title: "Accounts", href: "/dashboard/accounts", icon: "accounts" },
 ];
 
 export default async function DashboardLayout({
