@@ -10,6 +10,20 @@ function readRequiredEnv(name: string): string {
   return value;
 }
 
+function hasConfiguredEnv(name: string): boolean {
+  const value = process.env[name];
+
+  return typeof value === "string" && value.length > 0 && !NON_EMPTY_PLACEHOLDER.test(value);
+}
+
+export function hasSupabaseEnv(): boolean {
+  return (
+    hasConfiguredEnv("NEXT_PUBLIC_SUPABASE_URL") &&
+    (hasConfiguredEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY") ||
+      hasConfiguredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"))
+  );
+}
+
 export function getSupabaseUrl(): string {
   return readRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
 }

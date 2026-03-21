@@ -8,6 +8,7 @@ import { useTransition } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { hasSupabaseEnv } from "@/lib/env";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -27,13 +28,18 @@ interface SidebarProps {
 export function Sidebar({ navigation, user, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
   const [isPending, startTransition] = useTransition();
   const displayName = getUserDisplayName(user);
   const initials = getUserInitials(displayName);
+  const isSupabaseConfigured = hasSupabaseEnv();
 
   function handleLogout() {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+
     startTransition(async () => {
+      const supabase = createClient();
       const { error } = await supabase.auth.signOut();
 
       if (!error) {
@@ -106,7 +112,7 @@ export function Sidebar({ navigation, user, onNavigate }: SidebarProps) {
 
           <Button
             className="mt-4 w-full justify-start bg-white/5 text-slate-200 hover:bg-white/8 hover:text-white"
-            disabled={isPending}
+            disabled={isPending || !isSupabaseConfigured}
             onClick={handleLogout}
             type="button"
             variant="ghost"

@@ -10,20 +10,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { hasSupabaseEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const isSupabaseConfigured = hasSupabaseEnv();
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (!isSupabaseConfigured) {
+      toast.error("Supabase auth is not configured. Add Vercel env vars and redeploy.");
+      return;
+    }
+
     startTransition(async () => {
+      const supabase = createClient();
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -40,7 +47,13 @@ export default function LoginPage() {
   }
 
   function handleGoogleSignIn() {
+    if (!isSupabaseConfigured) {
+      toast.error("Supabase auth is not configured. Add Vercel env vars and redeploy.");
+      return;
+    }
+
     startTransition(async () => {
+      const supabase = createClient();
       const redirectTo = `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -72,6 +85,15 @@ export default function LoginPage() {
           <p className="text-sm leading-6 text-slate-400">
             Sign in to schedule, analyze, and manage every channel from one command center.
           </p>
+          {!isSupabaseConfigured ? (
+            <p className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-left text-xs leading-5 text-amber-100">
+              Auth is not configured for this deployment. Set
+              {" "}
+              <code>NEXT_PUBLIC_SUPABASE_URL</code>
+              {" "}
+              and your Supabase public key in Vercel, then redeploy.
+            </p>
+          ) : null}
         </CardHeader>
         <CardContent>
           <form className="space-y-5" onSubmit={handleSubmit}>
@@ -126,7 +148,7 @@ export default function LoginPage() {
 
             <Button
               className="h-12 w-full bg-gradient-to-r from-primary to-indigo-500 text-white hover:from-indigo-500 hover:to-primary"
-              disabled={isPending}
+              disabled={isPending || !isSupabaseConfigured}
               type="submit"
             >
               {isPending ? "Signing in..." : "Sign In"}
@@ -141,7 +163,7 @@ export default function LoginPage() {
 
           <Button
             className="h-12 w-full border border-white/10 bg-transparent text-white hover:bg-white/5"
-            disabled={isPending}
+            disabled={isPending || !isSupabaseConfigured}
             onClick={handleGoogleSignIn}
             type="button"
             variant="outline"

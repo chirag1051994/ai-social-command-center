@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { hasSupabaseEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 
 function calculatePasswordStrength(password: string): number {
@@ -44,7 +45,6 @@ function passwordStrengthLabel(score: number): string {
 
 export default function SignupPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [fullName, setFullName] = useState("");
   const [company, setCompany] = useState("");
   const [email, setEmail] = useState("");
@@ -53,6 +53,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const isSupabaseConfigured = hasSupabaseEnv();
 
   const strength = calculatePasswordStrength(password);
 
@@ -64,7 +65,13 @@ export default function SignupPage() {
       return;
     }
 
+    if (!isSupabaseConfigured) {
+      toast.error("Supabase auth is not configured. Add Vercel env vars and redeploy.");
+      return;
+    }
+
     startTransition(async () => {
+      const supabase = createClient();
       const { error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -104,6 +111,15 @@ export default function SignupPage() {
           <p className="text-sm leading-6 text-slate-400">
             Create your workspace and start managing every channel with one operating system.
           </p>
+          {!isSupabaseConfigured ? (
+            <p className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-left text-xs leading-5 text-amber-100">
+              Auth is not configured for this deployment. Set
+              {" "}
+              <code>NEXT_PUBLIC_SUPABASE_URL</code>
+              {" "}
+              and your Supabase public key in Vercel, then redeploy.
+            </p>
+          ) : null}
         </CardHeader>
         <CardContent>
           <form className="space-y-5" onSubmit={handleSubmit}>
@@ -214,7 +230,7 @@ export default function SignupPage() {
 
             <Button
               className="h-12 w-full bg-gradient-to-r from-primary via-indigo-500 to-amber-400 text-white hover:from-indigo-500 hover:to-amber-300"
-              disabled={isPending}
+              disabled={isPending || !isSupabaseConfigured}
               type="submit"
             >
               {isPending ? "Creating account..." : "Create account"}
