@@ -1,43 +1,53 @@
 const NON_EMPTY_PLACEHOLDER = /^REPLACE_WITH_/;
 
-function readRequiredEnv(name: string): string {
-  const value = process.env[name];
+function normalizeEnvValue(value: string | undefined): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
 
-  if (!value || NON_EMPTY_PLACEHOLDER.test(value)) {
+  const normalized = value.trim();
+
+  if (!normalized || NON_EMPTY_PLACEHOLDER.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function readRequiredEnv(name: string, value: string | undefined): string {
+  const normalized = normalizeEnvValue(value);
+
+  if (!normalized) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
 
-  return value;
+  return normalized;
 }
 
-function hasConfiguredEnv(name: string): boolean {
-  const value = process.env[name];
+function getPublicSupabasePublishableKey(): string | null {
+  return normalizeEnvValue(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY);
+}
 
-  return typeof value === "string" && value.length > 0 && !NON_EMPTY_PLACEHOLDER.test(value);
+function getPublicSupabaseAnonKey(): string | null {
+  return normalizeEnvValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
 export function hasSupabaseEnv(): boolean {
-  return (
-    hasConfiguredEnv("NEXT_PUBLIC_SUPABASE_URL") &&
-    (hasConfiguredEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY") ||
-      hasConfiguredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"))
-  );
+  return Boolean(normalizeEnvValue(process.env.NEXT_PUBLIC_SUPABASE_URL)) &&
+    Boolean(getPublicSupabasePublishableKey() ?? getPublicSupabaseAnonKey());
 }
 
 export function getSupabaseUrl(): string {
-  return readRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
+  return readRequiredEnv("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
 }
 
 export function getSupabaseAnonKey(): string {
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-
-  if (publishableKey && !NON_EMPTY_PLACEHOLDER.test(publishableKey)) {
-    return publishableKey;
-  }
-
-  return readRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  return (
+    getPublicSupabasePublishableKey() ??
+    readRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  );
 }
 
 export function getAnthropicApiKey(): string {
-  return readRequiredEnv("ANTHROPIC_API_KEY");
+  return readRequiredEnv("ANTHROPIC_API_KEY", process.env.ANTHROPIC_API_KEY);
 }
